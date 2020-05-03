@@ -141,29 +141,36 @@ int main(int argc , char* argv[]){
     
     //words = malloc(row*sizeof(Word));
 
+    //per ogni parola presente nell'array dobbiamo contare la frequenza di questa
     while(parole[num]){
+        //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
+        //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
+        //quando la trovo le imposto il valore ""
         if(strcmp(parole[num],"")!=0){
             words[contaStruttura].frequenza=1;
             words[contaStruttura].parola=parole[num];
-
-            for(int a = num+1; a<num; a++){
+            //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
+            //con il resto dell'array
+            for(int a = num+1; a<row; a++){
+                //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
+                //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
                 if(strcmp(parole[a],parole[num])==0){
-                    printf("%s\n",parole[a]);
-                    words[contaStruttura].frequenza=words[contaStruttura].frequenza=+1;
+                    words[contaStruttura].frequenza=words[contaStruttura].frequenza+1;
+                    //quando trova la parola, imposta nell'array tale parola a ""
+                    //cosi il while principale, trova la parola "" non andrà a fare questo for
+                    //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
                     parole[a]="";
                 }
-
-                
             }
         contaStruttura++;
         }
-        //printf("%d, %s \n",words[num].frequenza,words[num].parola);
         num++;
     }
 
-    /*for(int q=0; q<contaStruttura;q++){
-        printf("%d, %s \n",words[num].frequenza,words[num].parola);
-    }*/
+    for(int q=0; q<contaStruttura; q++){
+        printf("%d, %s \n",words[q].frequenza,words[q].parola);
+    }
+
     //size_t numeroParole = sizeof(parole[0]);
     printf("tot parole contate %d\n",num);
     
