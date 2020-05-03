@@ -5,7 +5,7 @@
 #include "dirent.h"
 #include <unistd.h>
 #include <time.h>
-#define row 1000
+#define row 1010
 #define cols 1
 
 typedef struct {
@@ -64,12 +64,11 @@ char** creaArrayParole(){
                         exit(-1); // must include stdlib.h 
                     }
 
-                    do
+                    while((ch = fgetc(in_file)) != terminatore)
                     {   
                         if(ch==separatore || ch==terminatore)
                         {   
-                            parole[i][j]='\n';
-                            //printf("parola = %s",parole[i]);
+                            //parole[i][j]='\n';
                             i++;
                             //se supero il numero di righe, quindi ho più parole di quante ne ho assegnate inizialmente
                             //non essendo ancora finito il file, gli aggiugno un'altra riga per l'iterazione successiva
@@ -89,7 +88,7 @@ char** creaArrayParole(){
                                 parole[i]=realloc(parole[i],sizeof(char)*(j+1));   
                             }   
                         }   
-                    }while((ch = fgetc(in_file)) != terminatore);
+                    }
                 
                 fclose(in_file);
                 }                
@@ -116,9 +115,10 @@ int main(int argc , char* argv[]){
     
     double execution_time = 0.0;
     */
+    
     int k=0;
     int numParole=0;
-   
+    FILE *fpcsv;
    
     //matrice di parole
     char **parole;
@@ -133,14 +133,13 @@ int main(int argc , char* argv[]){
     //execution_time += MPI_Wtime();
     //printf("execution time: %lf\n",execution_time);
 
-    /*stampo parole, solo per controllo, si può poi eliminare*/
     int num=0;
     int contaStruttura=0;
 
     Word words[row];
-    
-    //words = malloc(row*sizeof(Word));
-
+   
+    fpcsv=fopen("occorrenze.csv","w+"); //apro in scrittura(se già esiste sovrascrive) file csv
+    fprintf(fpcsv,"OCCORRENZA,PAROLA"); //prima riga file csv
     //per ogni parola presente nell'array dobbiamo contare la frequenza di questa
     while(parole[num]){
         //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
@@ -162,14 +161,12 @@ int main(int argc , char* argv[]){
                     parole[a]="";
                 }
             }
+        fprintf(fpcsv,"\n%s,%d",words[contaStruttura].parola, words[contaStruttura].frequenza); //scrivo in file csv
         contaStruttura++;
         }
         num++;
     }
-
-    for(int q=0; q<contaStruttura; q++){
-        printf("%d, %s \n",words[q].frequenza,words[q].parola);
-    }
+    fclose(fpcsv); //chiudo file csv
 
     //size_t numeroParole = sizeof(parole[0]);
     printf("tot parole contate %d\n",num);
