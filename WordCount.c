@@ -4,9 +4,14 @@
 #include "stdlib.h"
 #include "dirent.h"
 #include <unistd.h>
-
-#define row 1
+#include <time.h>
+#define row 1000
 #define cols 1
+
+typedef struct {
+	char *parola;
+	int frequenza;
+}Word;
 
 void deallocaArrayMultiDim(int**x, int rows){
   for (int i=0; i<rows; i++)
@@ -17,10 +22,11 @@ void deallocaArrayMultiDim(int**x, int rows){
 }
 
 char** creaArrayParole(){
-    int i=0;
-    int j=0;
-    char ch;
+    int i=0; //contatore per righe
+    int j=0; //contatore per colonne
+    char ch; 
     char separatore='\n';
+    char terminatore='.';
     DIR *dir;
     struct dirent *ent;
     char cwd[PATH_MAX];
@@ -42,8 +48,6 @@ char** creaArrayParole(){
     strcat(cwd,"/file/");
 
     if ((dir = opendir(cwd)) != NULL) {
-    /* print all the files and directories within directory */
-    int numfile=0;
         //untill the dir is empty, so for each file i take the word and put it all in the array
         //after this array will be splitted equally for each processor
         while ((ent = readdir (dir)) != NULL) {
@@ -60,11 +64,12 @@ char** creaArrayParole(){
                         exit(-1); // must include stdlib.h 
                     }
 
-                    while((ch = fgetc(in_file)) != EOF)
+                    do
                     {   
-                        if(ch==separatore)
+                        if(ch==separatore || ch==terminatore)
                         {   
                             parole[i][j]='\n';
+                            //printf("parola = %s",parole[i]);
                             i++;
                             //se supero il numero di righe, quindi ho più parole di quante ne ho assegnate inizialmente
                             //non essendo ancora finito il file, gli aggiugno un'altra riga per l'iterazione successiva
@@ -84,7 +89,8 @@ char** creaArrayParole(){
                                 parole[i]=realloc(parole[i],sizeof(char)*(j+1));   
                             }   
                         }   
-                    }
+                    }while((ch = fgetc(in_file)) != terminatore);
+                
                 fclose(in_file);
                 }                
             }
@@ -107,22 +113,59 @@ int main(int argc , char* argv[]){
     MPI_Request request;
     MPI_Init (&argc , &argv);
     MPI_Comm_rank(MPI_COMM_WORLD , &my_rank);
+    
+    double execution_time = 0.0;
     */
     int k=0;
     int numParole=0;
+   
    
     //matrice di parole
     char **parole;
 
     //inserisco nell'array di stringhe ogni parola
+    //execution_time -= MPI_Wtime();
+    clock_t begin = clock();
     parole=creaArrayParole();
+    clock_t end = clock();
+    double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+    printf("execution time = %lf\n",time_spent);
+    //execution_time += MPI_Wtime();
+    //printf("execution time: %lf\n",execution_time);
 
-    //stampo parole, solo per controllo, si può poi eliminare
+    /*stampo parole, solo per controllo, si può poi eliminare*/
     int num=0;
+    int contaStruttura=0;
+
+    Word words[row];
+    
+    //words = malloc(row*sizeof(Word));
+
     while(parole[num]){
-        printf("%s",parole[num]);
-        num++;
+        if(strcmp(parole[num],"")!=0){
+            words[contaStruttura].frequenza=1;
+            words[contaStruttura].parola=parole[num];
+
+            for(int a = num+1; a<num; a++){
+                if(strcmp(parole[a],parole[num])==0){
+                    printf("%s\n",parole[a]);
+                    words[contaStruttura].frequenza=words[contaStruttura].frequenza=+1;
+                    parole[a]="";
+                }
+
+                
+            }
+        contaStruttura++;
         }
+        //printf("%d, %s \n",words[num].frequenza,words[num].parola);
+        num++;
+    }
+
+    /*for(int q=0; q<contaStruttura;q++){
+        printf("%d, %s \n",words[num].frequenza,words[num].parola);
+    }*/
+    //size_t numeroParole = sizeof(parole[0]);
+    printf("tot parole contate %d\n",num);
     
     //MPI_Finalize ();
     return 0;
