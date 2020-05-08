@@ -13,12 +13,55 @@ typedef struct {
 	int frequenza;
 }Word;
 
-void deallocaArrayMultiDim(int**x, int rows){
+void deallocaArrayMultiDim(char**x, int rows){
   for (int i=0; i<rows; i++)
   {
     free(x[i]);
   }
   free(x);
+}
+
+void creaCSV(char**parole){
+
+    FILE *fpcsv;
+    int num=0;
+    int contaStruttura=0;
+
+    Word words[row];
+   
+    fpcsv=fopen("occorrenze.csv","w+"); //apro in scrittura(se già esiste sovrascrive) file csv
+    fprintf(fpcsv,"OCCORRENZA,PAROLA"); //prima riga file csv
+    //per ogni parola presente nell'array dobbiamo contare la frequenza di questa
+    while(parole[num]){
+        //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
+        //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
+        //quando la trovo le imposto il valore ""
+        if(strcmp(parole[num],"")!=0){
+            words[contaStruttura].frequenza=1;
+            words[contaStruttura].parola=parole[num];
+            //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
+            //con il resto dell'array
+            for(int a = num+1; a<row; a++){
+                //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
+                //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
+                if(strcmp(parole[a],parole[num])==0){
+                    words[contaStruttura].frequenza=words[contaStruttura].frequenza+1;
+                    //quando trova la parola, imposta nell'array tale parola a ""
+                    //cosi il while principale, trova la parola "" non andrà a fare questo for
+                    //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
+                    parole[a]="";
+                }
+            }
+        fprintf(fpcsv,"\n%s,%d",words[contaStruttura].parola, words[contaStruttura].frequenza); //scrivo in file csv
+        contaStruttura++;
+        }
+        num++;
+    }
+    fclose(fpcsv); //chiudo file csv
+
+    //size_t numeroParole = sizeof(parole[0]);
+    printf("tot parole contate %d\n",num);
+
 }
 
 char** creaArrayParole(){
@@ -118,8 +161,7 @@ int main(int argc , char* argv[]){
     
     int k=0;
     int numParole=0;
-    FILE *fpcsv;
-   
+      
     //matrice di parole
     char **parole;
 
@@ -133,44 +175,8 @@ int main(int argc , char* argv[]){
     //execution_time += MPI_Wtime();
     //printf("execution time: %lf\n",execution_time);
 
-    int num=0;
-    int contaStruttura=0;
-
-    Word words[row];
-   
-    fpcsv=fopen("occorrenze.csv","w+"); //apro in scrittura(se già esiste sovrascrive) file csv
-    fprintf(fpcsv,"OCCORRENZA,PAROLA"); //prima riga file csv
-    //per ogni parola presente nell'array dobbiamo contare la frequenza di questa
-    while(parole[num]){
-        //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
-        //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
-        //quando la trovo le imposto il valore ""
-        if(strcmp(parole[num],"")!=0){
-            words[contaStruttura].frequenza=1;
-            words[contaStruttura].parola=parole[num];
-            //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
-            //con il resto dell'array
-            for(int a = num+1; a<row; a++){
-                //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
-                //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
-                if(strcmp(parole[a],parole[num])==0){
-                    words[contaStruttura].frequenza=words[contaStruttura].frequenza+1;
-                    //quando trova la parola, imposta nell'array tale parola a ""
-                    //cosi il while principale, trova la parola "" non andrà a fare questo for
-                    //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
-                    parole[a]="";
-                }
-            }
-        fprintf(fpcsv,"\n%s,%d",words[contaStruttura].parola, words[contaStruttura].frequenza); //scrivo in file csv
-        contaStruttura++;
-        }
-        num++;
-    }
-    fclose(fpcsv); //chiudo file csv
-
-    //size_t numeroParole = sizeof(parole[0]);
-    printf("tot parole contate %d\n",num);
-    
+    creaCSV(parole);
+  
     //MPI_Finalize ();
     return 0;
 }
