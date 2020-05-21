@@ -7,178 +7,13 @@
 #include <mpi.h>
 
 #define row 100
-#define cols 1
+#define cols 14
 
 typedef struct {
-	char *parola;
+	char parola[cols];
 	int frequenza;
 }Word;
 
-void deallocaArrayMultiDim(char**x, int rows){
-  for (int i=0; i<rows; i++)
-  {
-    free(x[i]);
-  }
-  free(x);
-}
-
-int creaStruttura(char **parole,Word *words){
-
-    int num=0;
-    int contaStruttura=0;
-
-    //per ogni parola presente nell'array dobbiamo contare la frequenza di questa
-    while(parole[num]){
-        //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
-        //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
-        //quando la trovo le imposto il valore ""
-        if(strcmp(parole[num],"")!=0){
-            words[contaStruttura].frequenza=1;
-            words[contaStruttura].parola=parole[num];
-            //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
-            //con il resto dell'array
-            for(int a = num+1; a<row; a++){
-                //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
-                //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
-                if(strcmp(parole[a],parole[num])==0){
-                    words[contaStruttura].frequenza=words[contaStruttura].frequenza+1;
-                    //quando trova la parola, imposta nell'array tale parola a ""
-                    //cosi il while principale, trova la parola "" non andrà a fare questo for
-                    //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
-                    parole[a]="";
-                }
-            }
-        contaStruttura++;
-        }
-        num++;
-    }
-
-    return num;
-}
-
-void creaCSV(char**parole){
-
-    FILE *fpcsv;
-    int num=0;
-    int contaStruttura=0;
-
-    Word words[row];
-   
-    fpcsv=fopen("occorrenze.csv","w+"); //apro in scrittura(se già esiste sovrascrive) file csv
-    fprintf(fpcsv,"OCCORRENZA,PAROLA"); //prima riga file csv
-    //per ogni parola presente nell'array dobbiamo contare la frequenza di questa
-    while(parole[num]){
-        //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
-        //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
-        //quando la trovo le imposto il valore ""
-        if(strcmp(parole[num],"")!=0){
-            words[contaStruttura].frequenza=1;
-            words[contaStruttura].parola=parole[num];
-            //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
-            //con il resto dell'array
-            for(int a = num+1; a<row; a++){
-                //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
-                //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
-                if(strcmp(parole[a],parole[num])==0){
-                    words[contaStruttura].frequenza=words[contaStruttura].frequenza+1;
-                    //quando trova la parola, imposta nell'array tale parola a ""
-                    //cosi il while principale, trova la parola "" non andrà a fare questo for
-                    //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
-                    parole[a]="";
-                }
-            }
-        fprintf(fpcsv,"\n%s,%d",words[contaStruttura].parola, words[contaStruttura].frequenza); //scrivo in file csv
-        contaStruttura++;
-        }
-        num++;
-    }
-    fclose(fpcsv); //chiudo file csv
-
-    //size_t numeroParole = sizeof(parole[0]);
-    printf("tot parole contate %d\n",num);
-}
-
-char** creaArrayParole(){
-    int i=0; //contatore per righe
-    int j=0; //contatore per colonne
-    char ch; 
-    char separatore='\n';
-    char terminatore='.';
-    DIR *dir;
-    struct dirent *ent;
-    char cwd[PATH_MAX];
-
-    //inizializzo l'array
-    char **parole;
-    parole=(char**)malloc(row*sizeof(char*));
-    for(int alfa=0;alfa<row;alfa++)
-        parole[alfa]=malloc(cols*sizeof(char));
-   
-    //get path of current directory
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
-       printf("Current working dir: %s\n", cwd);
-    } else {
-       perror("getcwd() error");
-       
-    }
-    //add path folder 
-    strcat(cwd,"/file/");
-
-    if ((dir = opendir(cwd)) != NULL) {
-        //untill the dir is empty, so for each file i take the word and put it all in the array
-        //after this array will be splitted equally for each processor
-        while ((ent = readdir (dir)) != NULL) {
-            if(strcmp(ent->d_name,".")!=0 && strcmp(ent->d_name,"..")!=0){
-                FILE *in_file;
-                char stringa[30]="file/";
-                strcat(stringa,ent->d_name);
-                printf("%s\n",stringa);
-                in_file = fopen(stringa, "r");
-                    // test for files not existing. 
-                    if (in_file == NULL) 
-                    {   
-                        printf("Error! Could not open file\n"); 
-                        exit(-1); // must include stdlib.h 
-                    }
-
-                    while((ch = fgetc(in_file)) != terminatore)
-                    {   
-                        if(ch==separatore)
-                        {   
-                            //parole[i][j]='\n';
-                            printf("%s\n",parole[i]);
-                            i++;
-                            //se supero il numero di righe, quindi ho più parole di quante ne ho assegnate inizialmente
-                            //non essendo ancora finito il file, gli aggiugno un'altra riga per l'iterazione successiva
-                            //farlo tante volte mi fa perdere un po' di tempo ma non spreco memoria    
-                            if(i>=row){
-                                parole=realloc(parole,sizeof(char*)*(i+1));
-                                parole[i]=malloc(cols*sizeof(char)); 
-                            }
-                            j=0;
-                        }else{
-                            //se supero il numero di colonne, quindi la lunghezza della parola, non essendo ancora 
-                            //la parola finita, allora aggiugno 1 altro spazio per l'iterazione successiva
-                            //farlo tante volte mi fa perdere un po' di tempo ma non spreco memoria
-                            if(j>=cols){
-                                parole[i]=realloc(parole[i],sizeof(char)*(j+1));   
-                            }  
-                            parole[i][j]=ch;
-                            j++;
-                         }   
-                    }
-                
-                fclose(in_file);
-                }                
-            }
-        closedir (dir);
-        } else {
-            /* could not open directory */
-            printf("Error! Could not open directory\n"); 
-            exit(-1); // must include stdlib.h 
-        }
-    return parole;
-}
 
 void ripartizioneElementi( int * arrayAppoggio, int p){
 
@@ -225,49 +60,128 @@ void ripartizioneElementi( int * arrayAppoggio, int p){
     //free(modulo);
 }
 
-int main(int argc , char* argv[]){
-	int myRank, p;
-    int tag=0;
-	MPI_Status status;
-	MPI_Init(&argc, &argv);
-	MPI_Comm_size(MPI_COMM_WORLD, &p);
-	MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-    
-    int arrayRipartizione[p];
-    
-    //struttura di grandezza  almeno quante sono le parole
-    //poteri avere tutte parole diverse
-    //Word words[row];
-    
-    //matrice di parole
-    //char **parole;
- 
-    if(myRank==0){
-        //quanti elementi dare a ogni processo  
-        ripartizioneElementi(arrayRipartizione,p);
+void creaStrutturaParole(Word *parole){
+    int i=0; //contatore per righe
+    int j=0; //contatore per colonne
+    char ch; 
+    char separatore='\n';
+    char terminatore='.';
+    DIR *dir;
+    struct dirent *ent;
+    char cwd[PATH_MAX];
 
-        //inserisco nell'array di stringhe ogni parola
-        //MI DA PROBLEMI, CON PIU' PROCESSI METTE IMMONDIZIA ASSIEME ALLE PAROLE
-        /*clock_t begin = clock();
-        parole=creaArrayParole();
-        clock_t end = clock();
-        double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-        printf("execution time = %lf\n",time_spent);
-        */
+    char parolaTMP[cols]=" ";
+  
+    //get path of current directory
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+       printf("Current working dir: %s\n", cwd);
+    } else {
+       perror("getcwd() error");
+       
+    }
+    //add path folder 
+    strcat(cwd,"/file/");
 
-        //int numStruttura=creaStruttura(parole,words);
+    if ((dir = opendir(cwd)) != NULL) {
+        //untill the dir is empty, so for each file i take the word and put it all in the array
+        //after this array will be splitted equally for each processor
+        while ((ent = readdir (dir)) != NULL) {
+            if(strcmp(ent->d_name,".")!=0 && strcmp(ent->d_name,"..")!=0){
+                FILE *in_file;
+                char stringa[30]="file/";
+                strcat(stringa,ent->d_name);
+                printf("%s\n",stringa);
+                in_file = fopen(stringa, "r");
+                    // test for files not existing. 
+                    if (in_file == NULL) 
+                    {   
+                        printf("Error! Could not open file\n"); 
+                        exit(-1); // must include stdlib.h 
+                    }
+                    
+                    while((ch = fgetc(in_file)) != terminatore)
+                    {   
+                        if(ch==separatore){
+                            parole[i].frequenza=1;
+                            i++;
+                            j=0;
+                        }else{
+                            parole[i].parola[j]=ch;
+                            j++;
+                        }   
+                    }
+                
+                fclose(in_file);
+                }                
+            }
+        closedir (dir);
+        } else {
+            /* could not open directory */
+            printf("Error! Could not open directory\n"); 
+            exit(-1); // must include stdlib.h 
+        }
 
-        //invio ai processi la loro porzione di array
-        /*for(int j=1; j<p; j++){
-            int start=(j)*arrayRipartizione[j];
-            MPI_Ssend(&parole[start], arrayRipartizione[j], MPI_CHAR, j, tag, MPI_COMM_WORLD);
-            //MPI_Send(&words[start].parole, arrayRipartizione[j], MPI_CHAR, j, tag, MPI_COMM_WORLD);   
-            //MPI_Send(&words[start].frequenza, arrayRipartizione[j], MPI_CHAR, j, tag, MPI_COMM_WORLD);           
-        } */
+}
+
+/*Sendind each colum to a processor*/
+int main (int argc, char *argv[])
+{
+    int numtasks, rank, source=0, dest, tag=1, i;
+    Word parole[100]={" ",0}; //per inizializzare elementi struttua
+    Word paroleProcessi[100];
+    
+    int start;
+    MPI_Status stat;
+
+    MPI_Datatype wordtype,oldtypes[2]; //il nuovo tipo struttura e i due vecchi tipo usati nella struttura
+    int blockcounts[2];
+    MPI_Aint offsets[2], lb, extent;
+
+    MPI_Init(&argc,&argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
+
+    // il tipo MPI_CHAR usato per la parola
+    offsets[0] = 0;
+    oldtypes[0] = MPI_CHAR;
+    blockcounts[0] = cols;
+    
+    MPI_Type_get_extent(MPI_CHAR, &lb, &extent); //lo uso per dire quanto spazio c'è fra il primo campo della struttura e il secondo
+    offsets[1] = cols * extent; //appunto l'offset di quanti valori dal primo campo
+    oldtypes[1] = MPI_INT;
+    blockcounts[1] = 1;
+
+    MPI_Type_create_struct(2, blockcounts, offsets, oldtypes, &wordtype); //creo il tipo struttura
+    MPI_Type_commit(&wordtype); 
+
+    int arrayAppoggio[numtasks];
+    ripartizioneElementi(arrayAppoggio,numtasks);
+    
+    if (rank == 0) {
+
+        //riempi struttura
+        creaStrutturaParole(parole);
+
+        for (i=1; i<numtasks; i++){
+            //da dove deve partire, se il processo precedente fa 50elememti
+            //il processo successivo dovà partire da quella posizione mettiamo caso che sono al processo 2 con 49 elementi, 
+            //ed il processo 1 ha fatto già 50 elementi quindi il processo 3 partirà da posizione 99
+            start=i*arrayAppoggio[i];
+            MPI_Send(&parole[start], arrayAppoggio[i] , wordtype, i, tag, MPI_COMM_WORLD);
+        }
+        for(int k = 0 ; k < arrayAppoggio[rank]; k++){
+            printf("rank= %d , PAROLA = %s , FREQUENZA = %d\n", rank, parole[k].parola, parole[k].frequenza);
+        }
+    }else{
+
+        MPI_Recv(paroleProcessi, arrayAppoggio[rank] , wordtype, source, tag, MPI_COMM_WORLD, &stat);
+        for(int k = 0 ; k < arrayAppoggio[rank]; k++){
+            printf("rank= %d , PAROLA = %s , FREQUENZA = %d\n", rank, paroleProcessi[k].parola, paroleProcessi[k].frequenza);
+        }
+        printf("\n");
     }
 
-    //deallocaArrayMultiDim(parole,row);
-  
+    MPI_Type_free(&wordtype);
     MPI_Finalize();
     return 0;
 }
