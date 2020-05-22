@@ -7,7 +7,7 @@
 #include <mpi.h>
 
 #define row 100
-#define cols 14
+#define cols 16
 
 typedef struct {
 	char parola[cols];
@@ -69,9 +69,7 @@ void creaStrutturaParole(Word *parole){
     DIR *dir;
     struct dirent *ent;
     char cwd[PATH_MAX];
-
-    char parolaTMP[cols]=" ";
-  
+ 
     //get path of current directory
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
        printf("Current working dir: %s\n", cwd);
@@ -112,23 +110,22 @@ void creaStrutturaParole(Word *parole){
                     }
                 
                 fclose(in_file);
-                }                
-            }
-        closedir (dir);
-        } else {
-            /* could not open directory */
-            printf("Error! Could not open directory\n"); 
-            exit(-1); // must include stdlib.h 
+            }                
         }
-
+        closedir (dir);
+    } else {
+        /* could not open directory */
+        printf("Error! Could not open directory\n"); 
+        exit(-1); // must include stdlib.h 
+    }
 }
 
 /*Sendind each colum to a processor*/
 int main (int argc, char *argv[])
 {
     int numtasks, rank, source=0, dest, tag=1, i;
-    Word parole[100]={" ",0}; //per inizializzare elementi struttua
-    Word paroleProcessi[100];
+    Word parole[row]={" ",0}; //per inizializzare elementi struttua
+    Word paroleProcessi[row];
     
     int start;
     MPI_Status stat;
@@ -158,7 +155,6 @@ int main (int argc, char *argv[])
     ripartizioneElementi(arrayAppoggio,numtasks);
     
     if (rank == 0) {
-
         //riempi struttura
         creaStrutturaParole(parole);
 
@@ -166,19 +162,79 @@ int main (int argc, char *argv[])
             //da dove deve partire, se il processo precedente fa 50elememti
             //il processo successivo dovà partire da quella posizione mettiamo caso che sono al processo 2 con 49 elementi, 
             //ed il processo 1 ha fatto già 50 elementi quindi il processo 3 partirà da posizione 99
-            start=i*arrayAppoggio[i];
+            start=start+arrayAppoggio[i-1];
             MPI_Send(&parole[start], arrayAppoggio[i] , wordtype, i, tag, MPI_COMM_WORLD);
         }
-        for(int k = 0 ; k < arrayAppoggio[rank]; k++){
-            printf("rank= %d , PAROLA = %s , FREQUENZA = %d\n", rank, parole[k].parola, parole[k].frequenza);
+        
+        int num=0;
+
+        //per ogni parola presente nell'array dobbiamo contare la frequenza di questa
+        for(num = 0 ; num < arrayAppoggio[rank] ; num++){
+            //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
+            //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
+            //quando la trovo le imposto il valore ""
+            if(strcmp(parole[num].parola,"")!=0){
+                //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
+                //con il resto dell'array
+                for(int a = num+1; a<arrayAppoggio[rank]; a++){
+                    //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
+                    //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
+                    if(strcmp(parole[a].parola,parole[num].parola)==0){
+                        
+                        parole[num].frequenza=parole[num].frequenza+1;
+                        
+                        //quando trova la parola, imposta nell'array tale parola a ""
+                        //cosi il while principale, trova la parola "" non andrà a fare questo for
+                        //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
+                        strcpy(parole[a].parola," ");
+                    }
+                }
+            }
+            if(strcmp(parole[num].parola," ")!=0){
+                printf("al rank %d , iterazione %d ,trovo la parola %s , con frequenza %d\n",rank,num,parole[num].parola,parole[num].frequenza);
+            }            
         }
+
+        for(int p = 1; p < numtasks; p++){
+            MPI_Recv(paroleProcessi, arrayAppoggio[p] , wordtype, p, tag, MPI_COMM_WORLD, &stat);
+
+        }
+        
     }else{
 
         MPI_Recv(paroleProcessi, arrayAppoggio[rank] , wordtype, source, tag, MPI_COMM_WORLD, &stat);
-        for(int k = 0 ; k < arrayAppoggio[rank]; k++){
-            printf("rank= %d , PAROLA = %s , FREQUENZA = %d\n", rank, paroleProcessi[k].parola, paroleProcessi[k].frequenza);
+        
+        int num=0;
+        
+        //per ogni parola presente nell'array dobbiamo contare la frequenza di questa
+        for(num = 0 ; num < arrayAppoggio[rank] ; num++){
+            //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
+            //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
+            //quando la trovo le imposto il valore ""
+            if(strcmp(paroleProcessi[num].parola," ")!=0){
+                //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
+                //con il resto dell'array
+                for(int a = num+1 ; a < arrayAppoggio[rank] ; a++){
+                    //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
+                    //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
+                    if(strcmp(paroleProcessi[a].parola,paroleProcessi[num].parola)==0){
+                        
+                        paroleProcessi[num].frequenza=paroleProcessi[num].frequenza+1;
+                        
+                        //quando trova la parola, imposta nell'array tale parola a ""
+                        //cosi il while principale, trova la parola "" non andrà a fare questo for
+                        //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
+                        strcpy(paroleProcessi[a].parola," ");
+                    }
+                }
+            }
+            if(strcmp(paroleProcessi[num].parola," ")!=0){
+                printf("al rank %d , iterazione %d ,trovo la parola %s , con frequenza %d\n",rank,num,paroleProcessi[num].parola,paroleProcessi[num].frequenza);
+            }
         }
-        printf("\n");
+
+
+        MPI_Send(&paroleProcessi[start], arrayAppoggio[rank] , wordtype, 0, tag, MPI_COMM_WORLD);
     }
 
     MPI_Type_free(&wordtype);
