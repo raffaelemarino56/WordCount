@@ -14,6 +14,32 @@ typedef struct {
 	int frequenza;
 }Word;
 
+void contaOccorrenze(Word *parole, int lunghezza){
+    int num=0;
+    //per ogni parola presente nell'array dobbiamo contare la frequenza di questa
+    for(num = 0 ; num < lunghezza ; num++){
+        //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
+        //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
+        //quando la trovo le imposto il valore ""
+        if(strcmp(parole[num].parola," ")!=0){
+            //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
+            //con il resto dell'array
+            for(int a = num+1; a < lunghezza; a++){
+                //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
+                //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
+                if(strcmp(parole[a].parola,parole[num].parola)==0){
+                        
+                    parole[num].frequenza=parole[num].frequenza+1;
+                    
+                    //quando trova la parola, imposta nell'array tale parola a ""
+                    //cosi il while principale, trova la parola "" non andrà a fare questo for
+                    //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
+                    strcpy(parole[a].parola," ");
+                }
+            }
+        }
+    }
+}
 
 void ripartizioneElementi( int * arrayAppoggio, int p){
 
@@ -166,34 +192,7 @@ int main (int argc, char *argv[])
             MPI_Send(&parole[start], arrayAppoggio[i] , wordtype, i, tag, MPI_COMM_WORLD);
         }
         
-        int num=0;
-
-        //per ogni parola presente nell'array dobbiamo contare la frequenza di questa
-        for(num = 0 ; num < arrayAppoggio[rank] ; num++){
-            //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
-            //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
-            //quando la trovo le imposto il valore ""
-            if(strcmp(parole[num].parola,"")!=0){
-                //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
-                //con il resto dell'array
-                for(int a = num+1; a<arrayAppoggio[rank]; a++){
-                    //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
-                    //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
-                    if(strcmp(parole[a].parola,parole[num].parola)==0){
-                        
-                        parole[num].frequenza=parole[num].frequenza+1;
-                        
-                        //quando trova la parola, imposta nell'array tale parola a ""
-                        //cosi il while principale, trova la parola "" non andrà a fare questo for
-                        //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
-                        strcpy(parole[a].parola," ");
-                    }
-                }
-            }
-            if(strcmp(parole[num].parola," ")!=0){
-                printf("al rank %d , iterazione %d ,trovo la parola %s , con frequenza %d\n",rank,num,parole[num].parola,parole[num].frequenza);
-            }            
-        }
+        contaOccorrenze(parole,arrayAppoggio[0]);
 
         for(int p = 1; p < numtasks; p++){
             MPI_Recv(paroleProcessi, arrayAppoggio[p] , wordtype, p, tag, MPI_COMM_WORLD, &stat);
@@ -201,39 +200,8 @@ int main (int argc, char *argv[])
         }
         
     }else{
-
         MPI_Recv(paroleProcessi, arrayAppoggio[rank] , wordtype, source, tag, MPI_COMM_WORLD, &stat);
-        
-        int num=0;
-        
-        //per ogni parola presente nell'array dobbiamo contare la frequenza di questa
-        for(num = 0 ; num < arrayAppoggio[rank] ; num++){
-            //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
-            //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
-            //quando la trovo le imposto il valore ""
-            if(strcmp(paroleProcessi[num].parola," ")!=0){
-                //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
-                //con il resto dell'array
-                for(int a = num+1 ; a < arrayAppoggio[rank] ; a++){
-                    //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
-                    //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
-                    if(strcmp(paroleProcessi[a].parola,paroleProcessi[num].parola)==0){
-                        
-                        paroleProcessi[num].frequenza=paroleProcessi[num].frequenza+1;
-                        
-                        //quando trova la parola, imposta nell'array tale parola a ""
-                        //cosi il while principale, trova la parola "" non andrà a fare questo for
-                        //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
-                        strcpy(paroleProcessi[a].parola," ");
-                    }
-                }
-            }
-            if(strcmp(paroleProcessi[num].parola," ")!=0){
-                printf("al rank %d , iterazione %d ,trovo la parola %s , con frequenza %d\n",rank,num,paroleProcessi[num].parola,paroleProcessi[num].frequenza);
-            }
-        }
-
-
+        contaOccorrenze(paroleProcessi,arrayAppoggio[rank]);
         MPI_Send(&paroleProcessi[start], arrayAppoggio[rank] , wordtype, 0, tag, MPI_COMM_WORLD);
     }
 
