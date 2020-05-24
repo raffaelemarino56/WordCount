@@ -14,16 +14,48 @@ typedef struct {
 	int frequenza;
 }Word;
 
-void contaOccorrenze(Word *parole, int lunghezza){
+void creaCSV(Word *parole, int lunghezza){
+    FILE *fpcsv;
+
     int num=0;
-    //per ogni parola presente nell'array dobbiamo contare la frequenza di questa
+    fpcsv=fopen("occorrenze.csv","w+"); //apro in scrittura(se già esiste sovrascrive) file csv
+    fprintf(fpcsv,"OCCORRENZA,PAROLA"); //prima riga file csv
+    //per ogni parola presente nella struttura dobbiamo contare la frequenza di questa
     for(num = 0 ; num < lunghezza ; num++){
         //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
         //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
-        //quando la trovo le imposto il valore ""
+        //quando la trovo le imposto il valore " "
         if(strcmp(parole[num].parola," ")!=0){
             //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
-            //con il resto dell'array
+            //con il resto della struttura
+            for(int a = num+1; a < lunghezza; a++){
+                //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
+                //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
+                if(strcmp(parole[a].parola,parole[num].parola)==0){
+                        
+                    parole[num].frequenza=parole[num].frequenza+parole[a].frequenza;
+                    
+                    //quando trova la parola, imposta nella struttura tale parola a " "
+                    //cosi il for principale, trova la parola " " non andrà a fare questo for
+                    //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
+                    strcpy(parole[a].parola," ");
+                }
+            }
+            fprintf(fpcsv,"\n%s,%d",parole[num].parola, parole[num].frequenza); //scrivo in file csv
+        }
+    }
+}
+
+void contaOccorrenze(Word *parole, int lunghezza){
+    int num=0;
+    //per ogni parola presente nella struttura dobbiamo contare la frequenza di questa
+    for(num = 0 ; num < lunghezza ; num++){
+        //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
+        //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
+        //quando la trovo le imposto il valore " "
+        if(strcmp(parole[num].parola," ")!=0){
+            //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
+            //con il resto della struttura
             for(int a = num+1; a < lunghezza; a++){
                 //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
                 //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
@@ -31,8 +63,8 @@ void contaOccorrenze(Word *parole, int lunghezza){
                         
                     parole[num].frequenza=parole[num].frequenza+1;
                     
-                    //quando trova la parola, imposta nell'array tale parola a ""
-                    //cosi il while principale, trova la parola "" non andrà a fare questo for
+                    //quando trova la parola, imposta nella struttura tale parola a " "
+                    //cosi il for principale, trova la parola " " non andrà a fare questo for
                     //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
                     strcpy(parole[a].parola," ");
                 }
@@ -149,11 +181,11 @@ void creaStrutturaParole(Word *parole){
 /*Sendind each colum to a processor*/
 int main (int argc, char *argv[])
 {
-    int numtasks, rank, source=0, dest, tag=1, i;
+    int numtasks, rank, source=0, dest, tag=1;
     Word parole[row]={" ",0}; //per inizializzare elementi struttua
-    Word paroleProcessi[row];
     
-    int start;
+    int start=0;
+    int start2=0;
     MPI_Status stat;
 
     MPI_Datatype wordtype,oldtypes[2]; //il nuovo tipo struttura e i due vecchi tipo usati nella struttura
@@ -179,12 +211,19 @@ int main (int argc, char *argv[])
 
     int arrayAppoggio[numtasks];
     ripartizioneElementi(arrayAppoggio,numtasks);
+    int tmp = arrayAppoggio[rank];
+    Word paroleProcessi[tmp];
+
     
     if (rank == 0) {
         //riempi struttura
+        clock_t begin = clock();
         creaStrutturaParole(parole);
+        clock_t end = clock();
+        double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+        printf("loading words time = %lf\n",time_spent);
 
-        for (i=1; i<numtasks; i++){
+        for (int i=1; i<numtasks; i++){
             //da dove deve partire, se il processo precedente fa 50elememti
             //il processo successivo dovà partire da quella posizione mettiamo caso che sono al processo 2 con 49 elementi, 
             //ed il processo 1 ha fatto già 50 elementi quindi il processo 3 partirà da posizione 99
@@ -192,17 +231,24 @@ int main (int argc, char *argv[])
             MPI_Send(&parole[start], arrayAppoggio[i] , wordtype, i, tag, MPI_COMM_WORLD);
         }
         
+        clock_t begin2 = clock();
         contaOccorrenze(parole,arrayAppoggio[0]);
 
         for(int p = 1; p < numtasks; p++){
-            MPI_Recv(paroleProcessi, arrayAppoggio[p] , wordtype, p, tag, MPI_COMM_WORLD, &stat);
-
+            start2=start2+arrayAppoggio[p-1];
+            MPI_Recv(&parole[start2], arrayAppoggio[p] , wordtype, p, tag, MPI_COMM_WORLD, &stat);
         }
-        
+
+        creaCSV(parole,row);
+
+        clock_t end2 = clock();
+        double time_spent2 = (double)(end2 - begin2) / CLOCKS_PER_SEC;
+        printf("calculate occurence words time = %lf\n",time_spent2);
+         
     }else{
         MPI_Recv(paroleProcessi, arrayAppoggio[rank] , wordtype, source, tag, MPI_COMM_WORLD, &stat);
         contaOccorrenze(paroleProcessi,arrayAppoggio[rank]);
-        MPI_Send(&paroleProcessi[start], arrayAppoggio[rank] , wordtype, 0, tag, MPI_COMM_WORLD);
+        MPI_Send(paroleProcessi, arrayAppoggio[rank] , wordtype, 0, tag, MPI_COMM_WORLD);
     }
 
     MPI_Type_free(&wordtype);
