@@ -6,8 +6,10 @@
 #include <dirent.h>
 #include <mpi.h>
 
-#define row 100
-#define cols 16
+#define row 350000 //change this if the word for all file exceed (or is lowere) this value
+                  //for now this is a static program, just beacuse i found some difficult with c 
+                  //and the dinamic allocation of the memory
+#define cols 16   //max lenght of the word
 
 typedef struct {
 	char parola[cols];
@@ -60,8 +62,8 @@ void contaOccorrenze(Word *parole, int lunghezza){
                 //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
                 //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
                 if(strcmp(parole[a].parola,parole[num].parola)==0){
-                        
-                    parole[num].frequenza=parole[num].frequenza+1;
+                    //essendo parole[a].frequenza = 1 è come se facessi +1
+                    parole[num].frequenza=parole[num].frequenza+parole[a].frequenza; 
                     
                     //quando trova la parola, imposta nella struttura tale parola a " "
                     //cosi il for principale, trova la parola " " non andrà a fare questo for
@@ -75,12 +77,8 @@ void contaOccorrenze(Word *parole, int lunghezza){
 
 void ripartizioneElementi( int * arrayAppoggio, int p){
 
-    //nella funzione di MPI_Recv penso dovrò usare MPI_Get_count(&status,MPI_INT,&count); 
-    //dove count è dichiarata nel main come status
-
     int modulo=row%p;  
-    //verrà usato nelle MPI_Send, faccio un for per ogni elemento
-    //in quanto è probiabile che per solo per alcuni processi ho più elementi   
+    //è probiabile che per solo per alcuni processi avrò più elementi   
     
     //controllo se il modulo mi da resto > 0
     if(modulo!=0){
