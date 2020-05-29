@@ -18,6 +18,11 @@
 #define numfile 10
 
 typedef struct {
+	char parola[cols];
+	int frequenza;
+}Word;
+
+typedef struct {
 	int rank;
     long start;
     long end;
@@ -172,6 +177,73 @@ signed long dimTotaleFile(SizeFile * sizePerFile){
 
 }
 
+
+void creaStrutturaParole(Word *parole, char * nomefile, long start, long end){
+    int i=0; //contatore per righe
+    int j=0; //contatore per colonne
+    long conta=start;
+    char ch; 
+    char separatore='\n';
+    char terminatore='.';
+    DIR *dir;
+    struct dirent *ent;
+    char cwd[PATH_MAX];
+ 
+    //get path of current directory
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+       printf("Current working dir: %s\n", cwd);
+    } else {
+       perror("getcwd() error");
+       
+    }
+    //add path folder
+    char file1[20]="/";
+    strcat(file1,nomefile);
+    strcat(cwd,file1);
+    printf("sono nel file %s, parto da %ld, arrivo a %ld\n",nomefile,conta,end);
+    
+
+    FILE *in_file;
+    in_file = fopen(cwd, "r");
+    fseek(in_file, conta, SEEK_SET);
+    if(conta!=0){
+        while(ch!='\n'){
+             conta++;
+             ch = fgetc(in_file);
+        }
+        
+    }
+    
+    // test for files not existing. 
+    if (in_file == NULL) 
+    {   
+        printf("Error! Could not open file\n"); 
+        exit(-1); // must include stdlib.h 
+    }
+    
+    while(conta<end)
+    {   
+        ch = fgetc(in_file);
+        if(ch==separatore){
+            parole[i].frequenza=1;
+            i++;
+            j=0;
+        }else{
+            parole[i].parola[j]=ch;
+            j++;
+        }   
+        conta++;
+    }
+
+    //devo cercare di fare che se il file è taglaito devo prendermi fino a fine stringa, 
+    //visto che il processo che si prende il file tagliato partirà da dopo quella stringa
+    printf("sono arrivato a %ld, dovevo arrivare a %ld\n",conta,end);
+
+    fclose(in_file);
+}                
+
+
+
 int main (int argc, char *argv[]){
 
     int numtasks, rank, source=0, tag=1;
@@ -244,9 +316,10 @@ int main (int argc, char *argv[]){
         MPI_Recv(s, splitprocesso , filePerProcType, source, tag, MPI_COMM_WORLD, &stat);
         int count;
         MPI_Get_count(&stat, filePerProcType, &count);
+        Word parole[row]={" ",0}; //per inizializzare elementi struttua
 
         for(int i=0; i<count; i++){
-            
+            creaStrutturaParole(parole,s[i].nomefile,s[i].start,s[i].end);
         }
         //calcolo occorrenze
         //send
