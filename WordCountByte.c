@@ -122,7 +122,7 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
     
 }
 
-void creaCSV(Word *parole, int lunghezza){
+void contaOccorrenzeCSV(Word *parole, int lunghezza){
     FILE *fpcsv;
 
     int num=0;
@@ -149,7 +149,10 @@ void creaCSV(Word *parole, int lunghezza){
                     strcpy(parole[a].parola," ");
                 }
             }
-            fprintf(fpcsv,"\n%s,%d",parole[num].parola, parole[num].frequenza); //scrivo in file csv
+            if(strcmp(parole[num].parola,"")!=0){
+                fprintf(fpcsv,"\n%s,%d",parole[num].parola, parole[num].frequenza); //scrivo in file csv
+            }
+            
         }
     }
 }
@@ -453,7 +456,7 @@ int main (int argc, char *argv[]){
             quant=row-start2;
         }
 
-        creaCSV(parole,row);
+        contaOccorrenzeCSV(parole,row);
         
     }else{
         int count=0;
