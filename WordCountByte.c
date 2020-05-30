@@ -6,6 +6,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <ctype.h>
+
 #include <mpi.h>
 
 
@@ -41,12 +43,13 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
     int n=0; //num file in struttura
     long rimanenza=0;
     long tot = 0;
+
     
     while(i<p){
         s[j].rank=i;
         s[j].start=rimanenza;
         signed long differenza = bytePerProcesso[i]-bytePerFile[k].size;      
-        if(differenza>0 && k<10){   //se la taglia del processo è abbastanza grande 
+        if(differenza>=0 && k<10){   //se la taglia del processo è abbastanza grande 
                                     //da prendere in input tutta la grandezza del file
             printf("1= per processo %d  ho taglia %ld",i,bytePerProcesso[i]);
             bytePerProcesso[i]=bytePerProcesso[i]-bytePerFile[k].size;
@@ -72,7 +75,41 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
                 printf("2= per processo %d  ho taglia %ld",i,bytePerProcesso[i]);
                 bytePerProcesso[i]=0;
             }
+
             strcpy(s[j].nomefile,bytePerFile[k].nomefile);
+        
+            char file1[20]="/";
+            char ch;
+            char pf[PATH_MAX];
+            //get path of current directory
+            if (getcwd(pf, sizeof(pf)) != NULL) {
+                //printf(" Current working dir: %s\n", pf);
+            } else {
+                perror("getcwd() error");
+            }
+            if(strcmp(s[j].nomefile,"")!=0){
+                strcat(file1,s[j].nomefile);
+                strcat(pf,file1);
+                FILE *in_file;
+                in_file = fopen(pf, "r");
+                // test for files not existing. 
+                if (in_file == NULL) 
+                {   
+                    printf("Error! Could not open file\n"); 
+                    exit(-1);
+                }
+
+                fseek(in_file, s[j].end, SEEK_SET);
+                ch = fgetc(in_file);
+                do{
+                    printf("%c\n",ch);
+                    ch = fgetc(in_file);
+                    s[j].end++;
+                }while(ch!='\n' && isalpha(ch));
+                s[j].end++;
+                fclose(in_file);
+            }
+
             printf(", con file %s , parto da %ld, arrivo a %ld , rimangono al processo %ld\n",s[j].nomefile,s[j].start,s[j].end,bytePerProcesso[i]);
             printf("\n");
 
@@ -89,7 +126,7 @@ void creaCSV(Word *parole, int lunghezza){
     FILE *fpcsv;
 
     int num=0;
-    fpcsv=fopen("../occorrenze.csv","w+"); //apro in scrittura(se già esiste sovrascrive) file csv
+    fpcsv=fopen("occorrenze.csv","w+"); //apro in scrittura(se già esiste sovrascrive) file csv
     fprintf(fpcsv,"OCCORRENZA,PAROLA"); //prima riga file csv
     //per ogni parola presente nella struttura dobbiamo contare la frequenza di questa
     for(num = 0 ; num < lunghezza ; num++){
@@ -246,8 +283,6 @@ int creaStrutturaParole(Word *parole, SplitPerProcesso2 * s, int count){
     
     for(int p = 0; p<count; p++){
 
-        DIR *dir;
-        struct dirent *ent;
         char cwd[PATH_MAX];
  
         //get path of current directory
@@ -277,6 +312,7 @@ int creaStrutturaParole(Word *parole, SplitPerProcesso2 * s, int count){
         //se non parte dall'inizio del file
         fseek(in_file, conta, SEEK_SET);
         if(conta!=0){
+            
             while(ch!='\n'){
                 conta++;
                 ch = fgetc(in_file);
@@ -299,8 +335,10 @@ int creaStrutturaParole(Word *parole, SplitPerProcesso2 * s, int count){
                 i++;
                 j=0;
             }else{
-                parole[i].parola[j]=ch;
-                j++;
+                if(isalpha(ch)){
+                    parole[i].parola[j]=ch;
+                    j++;
+                }
             }   
             conta++;
         }
