@@ -86,6 +86,65 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
     
 }
 
+void creaCSV(Word *parole, int lunghezza){
+    FILE *fpcsv;
+
+    int num=0;
+    fpcsv=fopen("../occorrenze.csv","w+"); //apro in scrittura(se già esiste sovrascrive) file csv
+    fprintf(fpcsv,"OCCORRENZA,PAROLA"); //prima riga file csv
+    //per ogni parola presente nella struttura dobbiamo contare la frequenza di questa
+    for(num = 0 ; num < lunghezza ; num++){
+        //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
+        //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
+        //quando la trovo le imposto il valore " "
+        if(strcmp(parole[num].parola," ")!=0){
+            //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
+            //con il resto della struttura
+            for(int a = num+1; a < lunghezza; a++){
+                //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
+                //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
+                if(strcmp(parole[a].parola,parole[num].parola)==0){
+                        
+                    parole[num].frequenza=parole[num].frequenza+parole[a].frequenza;
+                    
+                    //quando trova la parola, imposta nella struttura tale parola a " "
+                    //cosi il for principale, trova la parola " " non andrà a fare questo for
+                    //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
+                    strcpy(parole[a].parola," ");
+                }
+            }
+            fprintf(fpcsv,"\n%s,%d",parole[num].parola, parole[num].frequenza); //scrivo in file csv
+        }
+    }
+}
+
+void contaOccorrenze(Word *parole, int lunghezza){
+    int num=0;
+    //per ogni parola presente nella struttura dobbiamo contare la frequenza di questa
+    for(num = 0 ; num < lunghezza ; num++){
+        //qui controllo se la parola che sto analizzando non sia vuota, questo perchè
+        //se quando trovo una corrispondenza, io quella parola non devo più analizzarla, e quindi
+        //quando la trovo le imposto il valore " "
+        if(strcmp(parole[num].parola," ")!=0){
+            //questo for mi consente di analizzare dalla parola immediatamente successiva a quella che ho
+            //con il resto della struttura
+            for(int a = num+1; a < lunghezza; a++){
+                //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
+                //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
+                if(strcmp(parole[a].parola,parole[num].parola)==0){
+                    //essendo parole[a].frequenza = 1 è come se facessi +1
+                    parole[num].frequenza=parole[num].frequenza+parole[a].frequenza; 
+                    
+                    //quando trova la parola, imposta nella struttura tale parola a " "
+                    //cosi il for principale, trova la parola " " non andrà a fare questo for
+                    //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
+                    strcpy(parole[a].parola," ");
+                }
+            }
+        }
+    }
+}
+
 void ripartizioneElementi( long * arrayAppoggio,  long sizeFile, int p){
     int modulo=sizeFile%p;  
     //è probiabile che per solo per alcuni processi avrò più elementi   
@@ -178,68 +237,82 @@ signed long dimTotaleFile(SizeFile * sizePerFile){
 }
 
 
-void creaStrutturaParole(Word *parole, char * nomefile, long start, long end){
+int creaStrutturaParole(Word *parole, SplitPerProcesso2 * s, int count){
     int i=0; //contatore per righe
     int j=0; //contatore per colonne
-    long conta=start;
+    
     char ch; 
     char separatore='\n';
     char terminatore='.';
-    DIR *dir;
-    struct dirent *ent;
-    char cwd[PATH_MAX];
- 
-    //get path of current directory
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
-       printf("Current working dir: %s\n", cwd);
-    } else {
-       perror("getcwd() error");
-       
-    }
-    //add path folder
-    char file1[20]="/";
-    strcat(file1,nomefile);
-    strcat(cwd,file1);
-    printf("sono nel file %s, parto da %ld, arrivo a %ld\n",nomefile,conta,end);
     
+    for(int p = 0; p<count; p++){
 
-    FILE *in_file;
-    in_file = fopen(cwd, "r");
-    fseek(in_file, conta, SEEK_SET);
-    if(conta!=0){
-        while(ch!='\n'){
-             conta++;
-             ch = fgetc(in_file);
+        DIR *dir;
+        struct dirent *ent;
+        char cwd[PATH_MAX];
+ 
+        //get path of current directory
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        //printf("Current working dir: %s\n", cwd);
+        } else {
+        perror("getcwd() error");
+        
+        }
+        //add path folder
+        long conta = s[p].start;
+        char file1[20]="/";
+        strcat(file1,s[p].nomefile);
+        strcat(cwd,file1);
+        //printf("sono %d con nel file %s, parto da %ld, arrivo a %ld\n",s[p].rank,s[p].nomefile,conta,s[p].end);
+        
+
+        FILE *in_file;
+        in_file = fopen(cwd, "r");
+
+        //se non parte dall'inizio del file
+        fseek(in_file, conta, SEEK_SET);
+        if(conta!=0){
+            while(ch!='\n'){
+                conta++;
+                ch = fgetc(in_file);
+            }
+            
         }
         
-    }
-    
-    // test for files not existing. 
-    if (in_file == NULL) 
-    {   
-        printf("Error! Could not open file\n"); 
-        exit(-1); // must include stdlib.h 
-    }
-    
-    while(conta<end)
-    {   
-        ch = fgetc(in_file);
-        if(ch==separatore){
-            parole[i].frequenza=1;
-            i++;
-            j=0;
-        }else{
-            parole[i].parola[j]=ch;
-            j++;
-        }   
-        conta++;
-    }
+        // test for files not existing. 
+        if (in_file == NULL) 
+        {   
+            printf("Error! Could not open file\n"); 
+            exit(-1); // must include stdlib.h 
+        }
+        
+        //finchè non arriva alla fine che doveva fare e non trova /n,
+        //cosi se viene tagliato il file, e so che il processo successivo
+        //che prenderà quel file non considera la prima parola
+        //(se il file non parte da 0) verrà considerata nel processo corrente
+        while(conta<s[p].end)
+        {   
+            ch = fgetc(in_file);
+            if(ch==separatore){
+                parole[i].frequenza=1;
+                //printf("%s\n",parole[i].parola);
+                i++;
+                j=0;
+            }else{
+                parole[i].parola[j]=ch;
+                j++;
+            }   
+            conta++;
+        }
 
-    //devo cercare di fare che se il file è taglaito devo prendermi fino a fine stringa, 
-    //visto che il processo che si prende il file tagliato partirà da dopo quella stringa
-    printf("sono arrivato a %ld, dovevo arrivare a %ld\n",conta,end);
+        //devo cercare di fare che se il file è taglaito devo prendermi fino a fine stringa, 
+        //visto che il processo che si prende il file tagliato partirà da dopo quella stringa
+        //printf("per %d , sono arrivato a %ld, dovevo arrivare a %ld, ho trovato %d parole\n",s[p].rank,conta,s[p].end,i);
 
-    fclose(in_file);
+        fclose(in_file);
+
+    }
+    return i;
 }                
 
 
@@ -247,7 +320,7 @@ void creaStrutturaParole(Word *parole, char * nomefile, long start, long end){
 int main (int argc, char *argv[]){
 
     int numtasks, rank, source=0, tag=1;
-    int y=5, z=10;
+    Word parole[row]={" ",0};
     MPI_Status stat;
 
     MPI_Init(&argc,&argv);
@@ -290,6 +363,7 @@ int main (int argc, char *argv[]){
         BPP2(s,bytePerProcesso,sizePerFile,numtasks);
         int k=0; //indice di dove mi trovo all'interno della struttura
         int startper0=0;
+        int grandezzaperzero=0;
         while(s[k].rank==0){
                 k++;
                 startper0++;
@@ -305,25 +379,35 @@ int main (int argc, char *argv[]){
             MPI_Send(&s[q], j , filePerProcType, i, tag, MPI_COMM_WORLD);
             q=k;
         }    
-
-        for(int i=0; i<startper0; i++){
-            
-        }     
-        //calcolo occorrenze
-        //recive
-
-    }else{
-        MPI_Recv(s, splitprocesso , filePerProcType, source, tag, MPI_COMM_WORLD, &stat);
-        int count;
-        MPI_Get_count(&stat, filePerProcType, &count);
-        Word parole[row]={" ",0}; //per inizializzare elementi struttua
-
-        for(int i=0; i<count; i++){
-            creaStrutturaParole(parole,s[i].nomefile,s[i].start,s[i].end);
+        
+        
+        grandezzaperzero=creaStrutturaParole(parole,s,startper0);   
+        printf("per processo %d ho trovato %d parole\n",rank,grandezzaperzero);
+        printf("\n");
+        contaOccorrenze(parole,grandezzaperzero);
+        int grandezzaprocessi=0;
+        int start2=grandezzaperzero;
+        for(int p = 1; p < numtasks; p++){
+            MPI_Recv(&parole[start2], 99999, filePerProcType, p, tag, MPI_COMM_WORLD, &stat);
+            MPI_Get_count(&stat, filePerProcType, &grandezzaprocessi);
+            start2=grandezzaperzero+grandezzaprocessi;
         }
-        //calcolo occorrenze
-        //send
 
+        creaCSV(parole,row);
+        
+    }else{
+        int count=0;
+        int grandezzaStruttura=0;
+        MPI_Recv(s, splitprocesso , filePerProcType, source, tag, MPI_COMM_WORLD, &stat);
+        MPI_Get_count(&stat, filePerProcType, &count);
+        
+        grandezzaStruttura=creaStrutturaParole(parole,s,count);
+        printf("per processo %d ho trovato %d parole\n",rank,grandezzaStruttura);
+        printf("\n");
+        contaOccorrenze(parole,grandezzaStruttura);
+
+        MPI_Send(parole, grandezzaStruttura, filePerProcType, 0, tag, MPI_COMM_WORLD);
+        
     }
 
     MPI_Type_free(&filePerProcType);
