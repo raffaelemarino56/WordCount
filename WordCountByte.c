@@ -62,8 +62,7 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
                         //e la differenza è < di 0 (non dovrebbe accadere)
                         //quindi riempio per la taglia rimanente del file il processo
                 s[j].end=bytePerFile[k].size;
-                printf("qui");
-
+                
             }else{  //nel caso in cui la size del processo rimanente è minore della size del file
                     //quindi vado a riempire per quanto rimane, dicendo il nome del file, 
                     //e passo al processo successivo, rimanendo però con quel file
@@ -268,6 +267,12 @@ int creaStrutturaParole(Word *parole, SplitPerProcesso2 * s, int count){
 
         FILE *in_file;
         in_file = fopen(cwd, "r");
+        // test for files not existing. 
+        if (in_file == NULL) 
+        {   
+            printf("Error! Could not open file\n"); 
+            exit(-1); // must include stdlib.h 
+        }
 
         //se non parte dall'inizio del file
         fseek(in_file, conta, SEEK_SET);
@@ -279,18 +284,13 @@ int creaStrutturaParole(Word *parole, SplitPerProcesso2 * s, int count){
             
         }
         
-        // test for files not existing. 
-        if (in_file == NULL) 
-        {   
-            printf("Error! Could not open file\n"); 
-            exit(-1); // must include stdlib.h 
-        }
-        
         //finchè non arriva alla fine che doveva fare e non trova /n,
         //cosi se viene tagliato il file, e so che il processo successivo
         //che prenderà quel file non considera la prima parola
         //(se il file non parte da 0) verrà considerata nel processo corrente
-        while(conta<s[p].end)
+        long finefile=s[p].end;
+        fseek(in_file, conta, SEEK_SET);
+        while(conta<finefile)
         {   
             ch = fgetc(in_file);
             if(ch==separatore){
@@ -328,9 +328,9 @@ int main (int argc, char *argv[]){
     MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
 
     int count=3;
-    MPI_Datatype filePerProcType,oldtypes[count];
-    int blockcounts[count];
-    MPI_Aint offsets[count],lb,extent;
+    MPI_Datatype wordtype,filePerProcType,oldtypes[count],oldtypes1[2];
+    int blockcounts[count],blockcounts1[2];
+    MPI_Aint offsets[count],offsets1[2],lb,extent;
 
     offsets[0] = offsetof(SplitPerProcesso2, rank);
     oldtypes[0] = MPI_INT;
@@ -350,6 +350,18 @@ int main (int argc, char *argv[]){
     MPI_Type_create_struct(count, blockcounts, offsets, oldtypes, &filePerProcType); //creo il tipo struttura
     MPI_Type_commit(&filePerProcType); 
 
+    offsets1[0] = 0;
+    oldtypes1[0] = MPI_CHAR;
+    blockcounts1[0] = cols;
+    
+    MPI_Type_get_extent(MPI_CHAR, &lb, &extent); //lo uso per dire quanto spazio c'è fra il primo campo della struttura e il secondo
+    offsets1[1] = offsetof(Word, parola); //appunto l'offset di quanti valori dal primo campo
+    oldtypes1[1] = MPI_INT;
+    blockcounts1[1] = 1;
+
+    MPI_Type_create_struct(2, blockcounts1, offsets1, oldtypes1, &wordtype); //creo il tipo struttura
+    MPI_Type_commit(&wordtype); 
+
     long bytePerProcesso[rank];
     long sizeTotFile=0;
     SizeFile sizePerFile[numfile];
@@ -364,6 +376,8 @@ int main (int argc, char *argv[]){
         int k=0; //indice di dove mi trovo all'interno della struttura
         int startper0=0;
         int grandezzaperzero=0;
+        
+        //celle da passare a processo 1...
         while(s[k].rank==0){
                 k++;
                 startper0++;
@@ -387,10 +401,18 @@ int main (int argc, char *argv[]){
         contaOccorrenze(parole,grandezzaperzero);
         int grandezzaprocessi=0;
         int start2=grandezzaperzero;
+        int quant=row-start2;
+        
         for(int p = 1; p < numtasks; p++){
-            MPI_Recv(&parole[start2], 99999, filePerProcType, p, tag, MPI_COMM_WORLD, &stat);
-            MPI_Get_count(&stat, filePerProcType, &grandezzaprocessi);
-            start2=grandezzaperzero+grandezzaprocessi;
+            printf("per processo %d start2 %d , quant %d\n",p,start2,quant);
+
+            MPI_Recv(&parole[start2], quant, wordtype, p, tag, MPI_COMM_WORLD, &stat);
+
+            MPI_Get_count(&stat, wordtype, &grandezzaprocessi);
+            printf("ricevo da %d , %d\n",p,grandezzaprocessi);
+
+            start2=start2+grandezzaprocessi;
+            quant=row-start2;
         }
 
         creaCSV(parole,row);
@@ -406,10 +428,11 @@ int main (int argc, char *argv[]){
         printf("\n");
         contaOccorrenze(parole,grandezzaStruttura);
 
-        MPI_Send(parole, grandezzaStruttura, filePerProcType, 0, tag, MPI_COMM_WORLD);
+        MPI_Send(parole, grandezzaStruttura, wordtype, 0, tag, MPI_COMM_WORLD);
         
     }
 
+    MPI_Type_free(&wordtype);
     MPI_Type_free(&filePerProcType);
     MPI_Finalize();
     return 0;
