@@ -51,11 +51,11 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
         signed long differenza = bytePerProcesso[i]-bytePerFile[k].size;      
         if(differenza>=0 && k<10){   //se la taglia del processo è abbastanza grande 
                                     //da prendere in input tutta la grandezza del file
-            printf("1= per processo %d  ho taglia %ld",i,bytePerProcesso[i]);
+            //printf("1= per processo %d  ho taglia %ld",i,bytePerProcesso[i]);
             bytePerProcesso[i]=bytePerProcesso[i]-bytePerFile[k].size;
             s[j].end=bytePerFile[k].size+rimanenza;
             strcpy(s[j].nomefile,bytePerFile[k].nomefile);
-            printf(", con file %s , parto da %ld, arrivo a %ld , rimangono al processo %ld\n",s[j].nomefile,s[j].start,s[j].end,bytePerProcesso[i]);
+            //printf(", con file %s , parto da %ld, arrivo a %ld , rimangono al processo %ld\n",s[j].nomefile,s[j].start,s[j].end,bytePerProcesso[i]);
             rimanenza=0;
             j++;
             k++;
@@ -72,7 +72,7 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
                 bytePerFile[k].size=bytePerFile[k].size-bytePerProcesso[i];
                 rimanenza=bytePerProcesso[i]+1;
                 s[j].end=bytePerProcesso[i];
-                printf("2= per processo %d  ho taglia %ld",i,bytePerProcesso[i]);
+                //printf("2= per processo %d  ho taglia %ld",i,bytePerProcesso[i]);
                 bytePerProcesso[i]=0;
             }
 
@@ -102,7 +102,6 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
                 fseek(in_file, s[j].end, SEEK_SET);
                 ch = fgetc(in_file);
                 do{
-                    printf("%c\n",ch);
                     ch = fgetc(in_file);
                     s[j].end++;
                 }while(ch!='\n' && isalpha(ch));
@@ -110,8 +109,8 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
                 fclose(in_file);
             }
 
-            printf(", con file %s , parto da %ld, arrivo a %ld , rimangono al processo %ld\n",s[j].nomefile,s[j].start,s[j].end,bytePerProcesso[i]);
-            printf("\n");
+            //printf(", con file %s , parto da %ld, arrivo a %ld , rimangono al processo %ld\n",s[j].nomefile,s[j].start,s[j].end,bytePerProcesso[i]);
+            //printf("\n");
 
             n=0;
             i++;
@@ -408,10 +407,11 @@ int main (int argc, char *argv[]){
     SizeFile sizePerFile[numfile];
     SplitPerProcesso2 s[splitprocesso];
 
-    sizeTotFile=dimTotaleFile(sizePerFile);
-
     if(rank==0){
-        
+        printf("per processi #%d\n",numtasks);
+        clock_t Kbegin = clock();
+        //parte costante del programma essendo eseguita solo dal processo 0
+        sizeTotFile=dimTotaleFile(sizePerFile);
         ripartizioneElementi(bytePerProcesso,sizeTotFile,numtasks);
         BPP2(s,bytePerProcesso,sizePerFile,numtasks);
         int k=0; //indice di dove mi trovo all'interno della struttura
@@ -434,30 +434,37 @@ int main (int argc, char *argv[]){
             MPI_Send(&s[q], j , filePerProcType, i, tag, MPI_COMM_WORLD);
             q=k;
         }    
-        
-        
+        //fine parte costante
+        clock_t Kend = clock();
+        double Ktime_spent = (double)(Kend - Kbegin) / CLOCKS_PER_SEC;
+        printf("parte costante tempo impegato = %lf\n",Ktime_spent);
+
+        //inizio conteggio parole, parte che varia a seconda dei processi
+        clock_t Pbegin = clock();
         grandezzaperzero=creaStrutturaParole(parole,s,startper0);   
-        printf("per processo %d ho trovato %d parole\n",rank,grandezzaperzero);
-        printf("\n");
         contaOccorrenze(parole,grandezzaperzero);
         int grandezzaprocessi=0;
         int start2=grandezzaperzero;
         int quant=row-start2;
         
         for(int p = 1; p < numtasks; p++){
-            printf("per processo %d start2 %d , quant %d\n",p,start2,quant);
 
             MPI_Recv(&parole[start2], quant, wordtype, p, tag, MPI_COMM_WORLD, &stat);
 
             MPI_Get_count(&stat, wordtype, &grandezzaprocessi);
-            printf("ricevo da %d , %d\n",p,grandezzaprocessi);
 
             start2=start2+grandezzaprocessi;
             quant=row-start2;
         }
 
         contaOccorrenzeCSV(parole,row);
-        
+        clock_t Pend = clock();
+        double Ptime_spent = (double)(Pend - Pbegin) / CLOCKS_PER_SEC;
+        printf("parte parallela tempo impegato = %lf\n",Ptime_spent);
+        //fine
+        double TimeTot=Ktime_spent+Ptime_spent;
+        printf("tempo totale = %lf\n",TimeTot);
+        printf("\n");
     }else{
         int count=0;
         int grandezzaStruttura=0;
@@ -465,8 +472,7 @@ int main (int argc, char *argv[]){
         MPI_Get_count(&stat, filePerProcType, &count);
         
         grandezzaStruttura=creaStrutturaParole(parole,s,count);
-        printf("per processo %d ho trovato %d parole\n",rank,grandezzaStruttura);
-        printf("\n");
+
         contaOccorrenze(parole,grandezzaStruttura);
 
         MPI_Send(parole, grandezzaStruttura, wordtype, 0, tag, MPI_COMM_WORLD);
