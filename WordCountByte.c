@@ -7,11 +7,9 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <ctype.h>
-
 #include <mpi.h>
 
-
-#define row 200000 //change this if the word for all file exceed (or is lowere) this value
+#define row 320000 //change this if the word for all file exceed (or is lowere) this value
                   //for now this is a static program, just beacuse i found some difficult with c 
                   //and the dinamic allocation of the memory
 #define cols 16   //max lenght of the word
@@ -43,8 +41,8 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
     int n=0; //num file in struttura
     long rimanenza=0;
     long tot = 0;
+    int flag=0;
 
-    
     while(i<p){
         s[j].rank=i;
         s[j].start=rimanenza;
@@ -76,8 +74,12 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
                 bytePerProcesso[i]=0;
             }
 
+            //vado ad aumentare la fine del file, in quanto se un file è tagliato
+            //il processo che riceverà la seconda parte, salterà la prima parola(come da implementazione)
+            //cio implicherebbe che un processo si va andrebbe saltare una parola
+            //quindi apro il file, mi metto nella posizione end calcolata, e aumento la end per quel processo
+            //fino a che non trovo un \n
             strcpy(s[j].nomefile,bytePerFile[k].nomefile);
-        
             char file1[20]="/";
             char ch;
             char pf[PATH_MAX];
@@ -98,34 +100,33 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
                     printf("Error! Could not open file\n"); 
                     exit(-1);
                 }
-
                 fseek(in_file, s[j].end, SEEK_SET);
                 ch = fgetc(in_file);
-                do{
+                while(ch!='\n' && isalpha(ch)){
                     ch = fgetc(in_file);
                     s[j].end++;
-                }while(ch!='\n' && isalpha(ch));
-                s[j].end++;
+                    flag=1;
+                }
+                if(flag==1){
+                    s[j].end++;
+                    flag=0;
+                }
                 fclose(in_file);
             }
-
             //printf(", con file %s , parto da %ld, arrivo a %ld , rimangono al processo %ld\n",s[j].nomefile,s[j].start,s[j].end,bytePerProcesso[i]);
             //printf("\n");
-
             n=0;
             i++;
             j++;
             s[j].start=rimanenza;
         }
     }
-    
 }
 
 void contaOccorrenzeCSV(Word *parole, int lunghezza){
     FILE *fpcsv;
-
     int num=0;
-    fpcsv=fopen("occorrenze.csv","w+"); //apro in scrittura(se già esiste sovrascrive) file csv
+    fpcsv=fopen("/home/pcpc/occorrenze.csv","w+"); //apro in scrittura(se già esiste sovrascrive) file csv
     fprintf(fpcsv,"OCCORRENZA,PAROLA"); //prima riga file csv
     //per ogni parola presente nella struttura dobbiamo contare la frequenza di questa
     for(num = 0 ; num < lunghezza ; num++){
@@ -139,9 +140,7 @@ void contaOccorrenzeCSV(Word *parole, int lunghezza){
                 //se trova la corrispondenza allroa vado ad aumentare la frequenza di tale parola
                 //ovviamente deve continuare a cercare nel caso in cui trova altre parole uguali
                 if(strcmp(parole[a].parola,parole[num].parola)==0){
-                        
                     parole[num].frequenza=parole[num].frequenza+parole[a].frequenza;
-                    
                     //quando trova la parola, imposta nella struttura tale parola a " "
                     //cosi il for principale, trova la parola " " non andrà a fare questo for
                     //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
@@ -150,8 +149,7 @@ void contaOccorrenzeCSV(Word *parole, int lunghezza){
             }
             if(strcmp(parole[num].parola,"")!=0){
                 fprintf(fpcsv,"\n%s,%d",parole[num].parola, parole[num].frequenza); //scrivo in file csv
-            }
-            
+            }  
         }
     }
 }
@@ -172,7 +170,6 @@ void contaOccorrenze(Word *parole, int lunghezza){
                 if(strcmp(parole[a].parola,parole[num].parola)==0){
                     //essendo parole[a].frequenza = 1 è come se facessi +1
                     parole[num].frequenza=parole[num].frequenza+parole[a].frequenza; 
-                    
                     //quando trova la parola, imposta nella struttura tale parola a " "
                     //cosi il for principale, trova la parola " " non andrà a fare questo for
                     //risparmiando tempo. Come se in qualche modo mi segno che ho già analizzato questa parola
@@ -186,7 +183,6 @@ void contaOccorrenze(Word *parole, int lunghezza){
 void ripartizioneElementi( long * arrayAppoggio,  long sizeFile, int p){
     int modulo=sizeFile%p;  
     //è probiabile che per solo per alcuni processi avrò più elementi   
-    
     //controllo se il modulo mi da resto > 0
     if(modulo!=0){
         //se da > 0 allroa vado a inizializzare un array di appoggio nel quale
@@ -195,7 +191,6 @@ void ripartizioneElementi( long * arrayAppoggio,  long sizeFile, int p){
             arrayAppoggio[i]=sizeFile/p;
         }
         int temp=0;
-        
         //faccio un while decremetnando ogni volta il valore di modulo,
         //in quanto aggiungo un elemento per volta a ogni processo, 
         //cosi da avere una distribuzione equa
@@ -212,7 +207,6 @@ void ripartizioneElementi( long * arrayAppoggio,  long sizeFile, int p){
             }
             modulo--;
         }
-       
     }else{
         //altrimenti riempio normalmente questo array di appoggio con i valori della divisione,
         //esendo uguali per tutti i processi
@@ -222,27 +216,23 @@ void ripartizioneElementi( long * arrayAppoggio,  long sizeFile, int p){
     }
 }
 
-
+//prendo gradndezza file
 double stat_filesize(const char *filename){
     struct stat statbuf;
-
-    if (stat(filename, &statbuf) == -1)
-    {
+    if (stat(filename, &statbuf) == -1){
         printf("failed to stat %s\n", filename);
         exit(EXIT_FAILURE);
     }
-
     return statbuf.st_size;
 }
 
-signed long dimTotaleFile(SizeFile * sizePerFile){
-
+//calcolo la dimensione dei singoli file, mettendoli in una struttura (nome file / grandezza)
+//e ritorno la dimensione totale dei file
+long dimTotaleFile(SizeFile * sizePerFile){
     DIR *dir;
     struct dirent *ent;
-    signed long sizeTotFile=0;
-    
+    long sizeTotFile=0;
     char cwd[PATH_MAX];
- 
     //get path of current directory
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
        printf("Current working dir: %s\n", cwd);
@@ -252,7 +242,6 @@ signed long dimTotaleFile(SizeFile * sizePerFile){
     }
     //add path folder 
     strcat(cwd,"/file/");
-
     if ((dir = opendir(cwd)) != NULL) {
         //untill the dir is empty, so for each file i take the word and put it all in the array
         //after this array will be splitted equally for each processor
@@ -266,33 +255,27 @@ signed long dimTotaleFile(SizeFile * sizePerFile){
                 strcpy(sizePerFile[i].nomefile,stringa);
                 sizeTotFile+=sizePerFile[i].size;
                 i++;
-            }
-            
+            }   
         }
     }
     return sizeTotFile;
-
 }
 
 
 int creaStrutturaParole(Word *parole, SplitPerProcesso2 * s, int count){
     int i=0; //contatore per righe
     int j=0; //contatore per colonne
-    
     char ch; 
     char separatore='\n';
     char terminatore='.';
     
     for(int p = 0; p<count; p++){
-
         char cwd[PATH_MAX];
- 
         //get path of current directory
         if (getcwd(cwd, sizeof(cwd)) != NULL) {
         //printf("Current working dir: %s\n", cwd);
         } else {
         perror("getcwd() error");
-        
         }
         //add path folder
         long conta = s[p].start;
@@ -300,26 +283,22 @@ int creaStrutturaParole(Word *parole, SplitPerProcesso2 * s, int count){
         strcat(file1,s[p].nomefile);
         strcat(cwd,file1);
         //printf("sono %d con nel file %s, parto da %ld, arrivo a %ld\n",s[p].rank,s[p].nomefile,conta,s[p].end);
-        
 
         FILE *in_file;
         in_file = fopen(cwd, "r");
         // test for files not existing. 
-        if (in_file == NULL) 
-        {   
+        if (in_file == NULL){   
             printf("Error! Could not open file\n"); 
             exit(-1); // must include stdlib.h 
         }
 
-        //se non parte dall'inizio del file
+        //se non parte dall'inizio del file si salta la parte iniziale fino a che non arriva al primo \n
         fseek(in_file, conta, SEEK_SET);
-        if(conta!=0){
-            
+        if(conta!=0){  
             while(ch!='\n'){
                 conta++;
                 ch = fgetc(in_file);
-            }
-            
+            }   
         }
         
         //finchè non arriva alla fine che doveva fare e non trova /n,
@@ -328,8 +307,7 @@ int creaStrutturaParole(Word *parole, SplitPerProcesso2 * s, int count){
         //(se il file non parte da 0) verrà considerata nel processo corrente
         long finefile=s[p].end;
         fseek(in_file, conta, SEEK_SET);
-        while(conta<finefile)
-        {   
+        while(conta<finefile){   
             ch = fgetc(in_file);
             if(ch==separatore){
                 parole[i].frequenza=1;
@@ -344,18 +322,13 @@ int creaStrutturaParole(Word *parole, SplitPerProcesso2 * s, int count){
             }   
             conta++;
         }
-
         //devo cercare di fare che se il file è taglaito devo prendermi fino a fine stringa, 
         //visto che il processo che si prende il file tagliato partirà da dopo quella stringa
         //printf("per %d , sono arrivato a %ld, dovevo arrivare a %ld, ho trovato %d parole\n",s[p].rank,conta,s[p].end,i);
-
         fclose(in_file);
-
     }
     return i;
 }                
-
-
 
 int main (int argc, char *argv[]){
 
@@ -366,6 +339,7 @@ int main (int argc, char *argv[]){
     MPI_Init(&argc,&argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
+    MPI_Request request = MPI_REQUEST_NULL;
 
     int count=3;
     MPI_Datatype wordtype,filePerProcType,oldtypes[count],oldtypes1[2];
@@ -434,6 +408,7 @@ int main (int argc, char *argv[]){
             MPI_Send(&s[q], j , filePerProcType, i, tag, MPI_COMM_WORLD);
             q=k;
         }    
+        //MPI_Wait(&request, &stat); 
         //fine parte costante
         clock_t Kend = clock();
         double Ktime_spent = (double)(Kend - Kbegin) / CLOCKS_PER_SEC;
@@ -448,20 +423,17 @@ int main (int argc, char *argv[]){
         int quant=row-start2;
         
         for(int p = 1; p < numtasks; p++){
-
             MPI_Recv(&parole[start2], quant, wordtype, p, tag, MPI_COMM_WORLD, &stat);
-
             MPI_Get_count(&stat, wordtype, &grandezzaprocessi);
-
             start2=start2+grandezzaprocessi;
             quant=row-start2;
         }
-
-        contaOccorrenzeCSV(parole,row);
+        contaOccorrenzeCSV(parole,start2);
         clock_t Pend = clock();
         double Ptime_spent = (double)(Pend - Pbegin) / CLOCKS_PER_SEC;
         printf("parte parallela tempo impegato = %lf\n",Ptime_spent);
         //fine
+
         double TimeTot=Ktime_spent+Ptime_spent;
         printf("tempo totale = %lf\n",TimeTot);
         printf("\n");
@@ -470,15 +442,10 @@ int main (int argc, char *argv[]){
         int grandezzaStruttura=0;
         MPI_Recv(s, splitprocesso , filePerProcType, source, tag, MPI_COMM_WORLD, &stat);
         MPI_Get_count(&stat, filePerProcType, &count);
-        
         grandezzaStruttura=creaStrutturaParole(parole,s,count);
-
         contaOccorrenze(parole,grandezzaStruttura);
-
-        MPI_Send(parole, grandezzaStruttura, wordtype, 0, tag, MPI_COMM_WORLD);
-        
+        MPI_Ssend(parole, grandezzaStruttura, wordtype, 0, tag, MPI_COMM_WORLD); 
     }
-
     MPI_Type_free(&wordtype);
     MPI_Type_free(&filePerProcType);
     MPI_Finalize();
