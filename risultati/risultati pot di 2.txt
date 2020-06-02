@@ -1,0 +1,77 @@
+ssh -i "MyKeyPair.pem" ubuntu@ec2-52-91-152-181.compute-1.amazonaws.com 'bash -s' < prova/ubuntu-openmpi-openmp/install.sh
+scp -i "MyKeyPair.pem" -r progetto_PCPC/ ubuntu@ec2-52-91-152-181.compute-1.amazonaws.com:
+scp -i "MyKeyPair.pem" MyKeyPair.pem ubuntu@ec2-52-91-152-181.compute-1.amazonaws.com:
+
+
+ssh -i "MyKeyPair.pem" ubuntu@ec2-100-24-236-169.compute-1.amazonaws.com 'bash -s' < prova/ubuntu-openmpi-openmp/install.sh
+scp -i "MyKeyPair.pem" -r progetto_PCPC/ ubuntu@ec2-100-24-236-169.compute-1.amazonaws.com:
+scp -i "MyKeyPair.pem" MyKeyPair.pem ubuntu@ec2-100-24-236-169.compute-1.amazonaws.com:
+
+
+ssh -i "MyKeyPair.pem" ubuntu@ec2-54-83-137-9.compute-1.amazonaws.com 'bash -s' < prova/ubuntu-openmpi-openmp/install.sh
+scp -i "MyKeyPair.pem" -r progetto_PCPC/ ubuntu@ec2-54-83-137-9.compute-1.amazonaws.com:
+scp -i "MyKeyPair.pem" MyKeyPair.pem ubuntu@ec2-54-83-137-9.compute-1.amazonaws.com:
+
+
+ssh -i "MyKeyPair.pem" ubuntu@ec2-100-25-183-180.compute-1.amazonaws.com 'bash -s' < prova/ubuntu-openmpi-openmp/install.sh
+scp -i "MyKeyPair.pem" -r progetto_PCPC/ ubuntu@ec2-100-25-183-180.compute-1.amazonaws.com:
+scp -i "MyKeyPair.pem" MyKeyPair.pem ubuntu@ec2-100-25-183-180.compute-1.amazonaws.com:
+
+
+52.91.152.181	slots=4
+100.24.236.169	slots=4
+54.83.137.9	slots=4
+100.25.183.180	slots=4
+
+10k
+per processi #8
+Current working dir: /home/ubuntu/progetto_PCPC
+parte costante tempo impegato = 0.050575
+parte parallela tempo impegato = 0.057520
+tempo totale = 0.108095
+
+20k
+per processi #8
+Current working dir: /home/ubuntu/progetto_PCPC
+parte costante tempo impegato = 0.050426
+parte parallela tempo impegato = 0.119410
+tempo totale = 0.169836
+
+40k
+per processi #8
+Current working dir: /home/ubuntu/progetto_PCPC
+parte costante tempo impegato = 0.050480
+parte parallela tempo impegato = 0.243967
+tempo totale = 0.294447
+
+80k
+per processi #8
+Current working dir: /home/ubuntu/progetto_PCPC
+parte costante tempo impegato = 0.050535
+parte parallela tempo impegato = 0.493670
+tempo totale = 0.544205
+
+160k
+per processi #8
+Current working dir: /home/ubuntu/progetto_PCPC
+parte costante tempo impegato = 0.050520
+parte parallela tempo impegato = 0.991362
+tempo totale = 1.041882
+
+320k
+per processi #8
+Current working dir: /home/ubuntu/progetto_PCPC
+parte costante tempo impegato = 0.050559
+parte parallela tempo impegato = 1.989798
+tempo totale = 2.040357
+
+
+
+
+
+
+
+
+
+
+
