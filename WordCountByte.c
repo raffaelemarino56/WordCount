@@ -9,12 +9,12 @@
 #include <ctype.h>
 #include <mpi.h>
 
-#define row 320000 //change this if the word for all file exceed (or is lowere) this value
+#define row 400000 //change this if the word for all file exceed (or is lowere) this value
                   //for now this is a static program, just beacuse i found some difficult with c 
                   //and the dinamic allocation of the memory
 #define cols 16   //max lenght of the word
 
-#define splitprocesso 20
+#define splitprocesso 100
 #define numfile 10
 
 typedef struct {
