@@ -1,0 +1,52 @@
+10k
+per processi #8
+Current working dir: /home/ubuntu/progetto_PCPC
+parte costante tempo impegato = 0.050575
+parte parallela tempo impegato = 0.057520
+tempo totale = 0.108095
+
+20k
+per processi #8
+Current working dir: /home/ubuntu/progetto_PCPC
+parte costante tempo impegato = 0.050426
+parte parallela tempo impegato = 0.119410
+tempo totale = 0.169836
+
+40k
+per processi #8
+Current working dir: /home/ubuntu/progetto_PCPC
+parte costante tempo impegato = 0.050480
+parte parallela tempo impegato = 0.243967
+tempo totale = 0.294447
+
+80k
+per processi #8
+Current working dir: /home/ubuntu/progetto_PCPC
+parte costante tempo impegato = 0.050535
+parte parallela tempo impegato = 0.493670
+tempo totale = 0.544205
+
+160k
+per processi #8
+Current working dir: /home/ubuntu/progetto_PCPC
+parte costante tempo impegato = 0.050520
+parte parallela tempo impegato = 0.991362
+tempo totale = 1.041882
+
+320k
+per processi #8
+Current working dir: /home/ubuntu/progetto_PCPC
+parte costante tempo impegato = 0.050559
+parte parallela tempo impegato = 1.989798
+tempo totale = 2.040357
+
+
+
+
+
+
+
+
+
+
+
