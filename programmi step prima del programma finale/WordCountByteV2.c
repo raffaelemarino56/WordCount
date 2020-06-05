@@ -9,12 +9,12 @@
 #include <ctype.h>
 #include <mpi.h>
 
-#define row 120000 //change this if the word for all file exceed (or is lowere) this value
+#define row 400000 //change this if the word for all file exceed (or is lowere) this value
                   //for now this is a static program, just beacuse i found some difficult with c 
                   //and the dinamic allocation of the memory
 #define cols 16   //max lenght of the word
 
-#define splitprocesso 20
+#define splitprocesso 100
 #define numfile 10
 
 typedef struct {
@@ -126,7 +126,7 @@ void BPP2(SplitPerProcesso2 * s , long * bytePerProcesso , SizeFile * bytePerFil
 void contaOccorrenzeCSV(Word *parole, int lunghezza){
     FILE *fpcsv;
     int num=0;
-    fpcsv=fopen("occorrenze.csv","w+"); //apro in scrittura(se già esiste sovrascrive) file csv
+    fpcsv=fopen("/home/pcpc/occorrenze.csv","w+"); //apro in scrittura(se già esiste sovrascrive) file csv
     fprintf(fpcsv,"OCCORRENZA,PAROLA"); //prima riga file csv
     //per ogni parola presente nella struttura dobbiamo contare la frequenza di questa
     for(num = 0 ; num < lunghezza ; num++){
@@ -333,7 +333,7 @@ int creaStrutturaParole(Word *parole, SplitPerProcesso2 * s, int count){
 int main (int argc, char *argv[]){
 
     int numtasks, rank, source=0, tag=1;
-    Word parole[row]={" ",0};
+    Word parole[row];
     MPI_Status stat;
 
     MPI_Init(&argc,&argv);
@@ -366,7 +366,7 @@ int main (int argc, char *argv[]){
 
     offsets1[0] = 0;
     oldtypes1[0] = MPI_CHAR;
-    blockcounts1[0] = cols;
+    blockcounts1[0] = 17;
     
     MPI_Type_get_extent(MPI_CHAR, &lb, &extent); //lo uso per dire quanto spazio c'è fra il primo campo della struttura e il secondo
     offsets1[1] = offsetof(Word, parola); //appunto l'offset di quanti valori dal primo campo
@@ -417,19 +417,17 @@ int main (int argc, char *argv[]){
         //inizio conteggio parole, parte che varia a seconda dei processi
         clock_t Pbegin = clock();
         grandezzaperzero=creaStrutturaParole(parole,s,startper0);
-        //contaOccorrenze(parole,grandezzaperzero);
         int grandezzaprocessi=0;
         int start2=grandezzaperzero;
-        int quant=row-start2;
  
         for(int p = 1; p < numtasks; p++){
-            MPI_Recv(&parole[start2], quant, wordtype, p, tag, MPI_COMM_WORLD, &stat);
+            MPI_Recv(&parole[start2], row, wordtype, p, tag, MPI_COMM_WORLD, &stat);
             MPI_Get_count(&stat, wordtype, &grandezzaprocessi);
-            start2+=grandezzaprocessi; 
-            quant=row-start2;           
+            start2+=grandezzaprocessi;         
         }
 
-        contaOccorrenzeCSV(parole,start2);
+        contaOccorrenzeCSV(parole,start2); 
+
         clock_t Pend = clock();
         double Ptime_spent = (double)(Pend - Pbegin) / CLOCKS_PER_SEC;
         printf("parte parallela tempo impegato = %lf\n",Ptime_spent);
@@ -444,8 +442,7 @@ int main (int argc, char *argv[]){
         MPI_Recv(s, splitprocesso , filePerProcType, source, tag, MPI_COMM_WORLD, &stat);
         MPI_Get_count(&stat, filePerProcType, &count);
         grandezzaStruttura=creaStrutturaParole(parole,s,count);
-        //contaOccorrenze(parole,grandezzaStruttura);
-        MPI_Ssend(parole, grandezzaStruttura, wordtype, 0, tag, MPI_COMM_WORLD); 
+        MPI_Send(parole, grandezzaStruttura, wordtype, 0, tag, MPI_COMM_WORLD); 
     }
 
     MPI_Type_free(&wordtype);
