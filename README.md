@@ -1,8 +1,8 @@
 # WordCount Marino Raffaele
 # Cosa c'è in questo repo?
-  In questo repo vi sono vari file, quello per la consegna è WordCountByte.c, nella cartella "report progetto" vi è il report con i vari casi di test, mentre nella cartella file vi sono i file conteneti le parole.
+In questo repo vi sono vari file, quello per la consegna è WordCountByte.c, nella cartella "report progetto" vi è il report con i vari casi di test, mentre nella cartella file vi sono i file conteneti le parole.
   # Importante
-    All'interno di questo repo vi è una cartella chiamata "programmi ste prima del programma finale" bene in questa cartella vi sono 4 programmi, funzionanti, che sono stati i vari step prima di arrivare alla soluzione finale, ovvero vi è il WordCount sequenziale, poi multival.c che sono state prove per inviare strutture fra processi ,poi il WordCountParallelo dove solo il processo master aveva la possibilità di leggere i file, ed invfine c'è la versione ottimizzata del progetto consegnato, ovvero WordCountByteV2, per correttezza alla mia sottomissione del progetto non ho previsto che fosse la versione sottomessa appunto, tuttavia vale la pensa di essere tenuta in considerazione in quanto porta un miglioramento nei singoli tempi non indifferente! 
+All'interno di questo repo vi è una cartella chiamata "programmi ste prima del programma finale" bene in questa cartella vi sono 4 programmi, funzionanti, che sono stati i vari step prima di arrivare alla soluzione finale, ovvero vi è il WordCount sequenziale, poi multival.c che sono state prove per inviare strutture fra processi ,poi il WordCountParallelo dove solo il processo master aveva la possibilità di leggere i file, ed invfine c'è la versione ottimizzata del progetto consegnato, ovvero WordCountByteV2, per correttezza alla mia sottomissione del progetto non ho previsto che fosse la versione sottomessa appunto, tuttavia vale la pensa di essere tenuta in considerazione in quanto porta un miglioramento nei singoli tempi non indifferente! 
     
 # Problem explaination
 Language C, with open-MPI for univeristy project
